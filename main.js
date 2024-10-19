@@ -13,7 +13,9 @@ let tray = undefined;
 let form = undefined;
 var win = undefined;
 let template = []
+let loadingDialog;
 let basePath = app.isPackaged ? './resources/app/' : './'
+
 
 if (!app.requestSingleInstanceLock({ key: '电子课表' })) {
     app.quit();
@@ -50,6 +52,8 @@ const createWindow = () => {
     }
 
 }
+
+
 function setAutoLaunch() {
     const shortcutName = '电子课表(请勿重命名).lnk'
     app.setLoginItemSettings({ // backward compatible
@@ -68,7 +72,7 @@ function setAutoLaunch() {
 
 }
 
-function scheduleShutdown(shutdownTime = "22:30") {
+function scheduleShutdown(shutdownTime = "21:30") {
     const [hour, minute] = shutdownTime.split(':'); // 分割小时和分钟
 
     const now = new Date(); // 获取当前时间
@@ -81,6 +85,24 @@ function scheduleShutdown(shutdownTime = "22:30") {
 
     const delay = shutdownDate - now; // 计算延迟的毫秒数
 
+    // 设置定时器
+    setTimeout(() => {
+        exec('shutdown /s /t 0', (error, stdout, stderr) => {
+            if (error) {
+                console.error(`err: ${error.message}`);
+                dialog.showMessageBox(win, { title: 'Error!', message: `错误!: ${error.message}` })
+                return;
+            }
+            if (stderr) {
+                console.error(`stderr: ${stderr}`);
+                dialog.showMessageBox(win, { title: 'Error!', message: `stderr: ${stderr}` })
+
+                return;
+            }
+            console.log(`stdout: ${stdout}`);
+        });
+    }, delay);
+
     console.log(`Will close at: ${shutdownDate}`);
     console.log(`time to shut down: ${Math.ceil(delay / 1000)} s`);
 
@@ -88,34 +110,83 @@ function scheduleShutdown(shutdownTime = "22:30") {
         title: '关机提示!',
         message: `此电脑将关闭于: ${shutdownDate}` + '\n' + `剩余时间: ${Math.ceil(delay / 1000)} s`
     })
-
-    // 设置定时器
-    setTimeout(() => {
-        exec('shutdown /s /t 0', (error, stdout, stderr) => {
-            if (error) {
-                console.error(`err: ${error.message}`);
-                return;
-            }
-            if (stderr) {
-                console.error(`stderr: ${stderr}`);
-                return;
-            }
-            console.log(`stdout: ${stdout}`);
-        });
-    }, delay);
 }
 
-
-app.whenReady().then(() => {
-    createWindow()
-    Menu.setApplicationMenu(null)
-    win.webContents.on('did-finish-load', () => {
-        win.webContents.send('getWeekIndex');
+async function firstopen() {
+    return await dialog.showMessageBox({
+        type: 'info',
+        buttons: ['OK'],
+        title: '欢迎使用!',
+        message: '欢迎使用电子课表,课程配置请在根目录中的js文件夹中的scheduleConfig.js文件进行修改' + '\n' + '\n' + '祝您使用愉快!(本提示只显示一次)' + '\n' + 'Developer : Enigfrank'
     })
-    const handle = win.getNativeWindowHandle();
-    DisableMinimize(handle); // Thank to peter's project https://github.com/tbvjaos510/electron-disable-minimize
-    setAutoLaunch()
-})
+}
+
+function showLoadingDialog() {
+    loadingDialog = new BrowserWindow({
+        width: 300,
+        height: 200,
+        frame: false, // 无边框窗口
+        alwaysOnTop: true, // 窗口置顶
+        modal: true, // 模态窗口
+        parent: win, // 指定父窗口
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false
+        }
+    });
+
+    // 加载自定义的加载界面，可以放一个简单的 HTML 文件
+    loadingDialog.loadFile('loading.html');
+}
+
+app.whenReady().then(async () => {
+    // 检查是否是首次运行
+    const isFirstRun = store.get('isFirstRun', true); // 默认为 true
+
+    if (isFirstRun) {
+        // 如果是第一次运行，显示欢迎对话框
+        firstopen()
+            .then(() => {
+                // 设置已显示首次运行提示
+                store.set('isFirstRun', false);
+
+                // 欢迎对话框关闭后再创建主窗口
+                createWindow();
+                Menu.setApplicationMenu(null);
+                win.webContents.on('did-finish-load', () => {
+                    win.webContents.send('getWeekIndex');
+                });
+
+                const handle = win.getNativeWindowHandle();
+                DisableMinimize(handle); // 感谢 peter 的项目 https://github.com/tbvjaos510/electron-disable-minimize
+                setAutoLaunch();
+            });
+    } else {
+        // 如果不是第一次启动，显示加载框
+        showLoadingDialog();
+
+        const randomTime = Math.random() * (1500 - 1000) + 500;
+
+        // 模拟加载时间，2秒后关闭加载框，再创建主窗口
+        setTimeout(() => {
+            if (loadingDialog) {
+                loadingDialog.close();
+            }
+
+            // 加载框关闭后再创建主窗口
+            createWindow();
+            Menu.setApplicationMenu(null);
+
+            win.webContents.on('did-finish-load', () => {
+                win.webContents.send('getWeekIndex');
+            });
+
+            const handle = win.getNativeWindowHandle();
+            DisableMinimize(handle); // 感谢 peter 的项目 https://github.com/tbvjaos510/electron-disable-minimize
+            setAutoLaunch();
+        }, randomTime); // 加载持续时间 2 秒
+    }
+});
 
 ipcMain.on('getWeekIndex', (e, arg) => {
     tray = new Tray(basePath + 'image/icon.png')
@@ -132,20 +203,6 @@ ipcMain.on('getWeekIndex', (e, arg) => {
             type: 'radio',
             click: () => {
                 win.webContents.send('setWeekIndex', 1)
-            }
-        },
-        {
-            label: '第三周',
-            type: 'radio',
-            click: () => {
-                win.webContents.send('setWeekIndex', 2)
-            }
-        },
-        {
-            label: '第四周',
-            type: 'radio',
-            click: () => {
-                win.webContents.send('setWeekIndex', 3)
             }
         },
         {
@@ -223,21 +280,21 @@ ipcMain.on('getWeekIndex', (e, arg) => {
             click: (e) => {
                 // 使用 e.checked 来设置存储状态
                 store.set('scheduleShutdown', e.checked);
-        
+
                 // 如果用户选择定时关机，则调用 scheduleShutdown
                 if (e.checked) {
                     scheduleShutdown();
                 }
             }
         },
-        
+
         {
             type: 'separator'
         },
         {
             icon: basePath + 'image/debug.png',
             label: 'Devtool',
-            click: (e) => {
+            click: () => {
                 if (win.webContents.isDevToolsOpened()) {
                     win.webContents.closeDevTools();
                 } else {
@@ -246,16 +303,31 @@ ipcMain.on('getWeekIndex', (e, arg) => {
             }
         },
         {
-            icon: basePath + 'image/info.png',
-            label: '更多信息',
+            label: '开发者选项',
             click: () => {
-                dialog.showMessageBox(win, {
-                    title: 'Info - Let us across hell and reach to heaven！',
-                    message: '此版本构建于2024/10/19' + '\n' + '\n' + '作者: EnderWolf  二次开发: Enigfrank',
+                dialog.showMessageBox({
+                    title: 'Reset',
+                    message: '请选择重置内容',
+                    buttons: ['isFirstRun | 会自动重启', 'other'],
+                }).then((data) => {
+                    if (data.response === 0) { store.set('isFirstRun', true); app.relaunch(); app.exit(0); }
+                    else (data.response === 1); { dialog.showMessageBox(win, { title: '啊哦!', message: `不要乱点!!!` }) }
                 })
             }
         },
-        
+        {
+            icon: basePath + 'image/info.png',
+            label: '更多信息',
+            click: () => {
+                dialog.showMessageBox({
+                    type: 'info',
+                    buttons: ['OK'],
+                    title: 'Let us across hell and reach to heaven！',
+                    message: '此版本构建于2024/10/19' + '\n' + '\n' + '作者: EnderWolf  二次开发: Enigfrank' + '\n' + '课程配置请在根目录中的js文件夹中的scheduleConfig.js文件进行修改',
+                })
+            }
+        },
+
         {
             icon: basePath + 'image/quit.png',
             label: '退出程序',
@@ -293,7 +365,7 @@ ipcMain.on('setIgnore', (e, arg) => {
         win.setIgnoreMouseEvents(true, { forward: true });
     else
         win.setIgnoreMouseEvents(false);
-}) 
+})
 ipcMain.on('dialog', (e, arg) => {
     dialog.showMessageBox(win, arg.options).then((data) => {
         e.reply(arg.reply, { 'arg': arg, 'index': data.response })
@@ -319,8 +391,11 @@ ipcMain.on('getTimeOffset', (e, arg) => {
     }).then((r) => {
         if (r === null) {
             console.log('[getTimeOffset] User cancelled');
+            dialog.showMessageBox(win, { title: 'Warn!', message: `您取消了操作!` })
+
         } else {
             win.webContents.send('setTimeOffset', Number(r) % 10000000000000)
+            dialog.showMessageBox(win, { title: 'Warn!', message: `修改偏移成功!` })
         }
     })
 })
