@@ -7,15 +7,20 @@ const startupFolderPath = path.join(os.homedir(), 'AppData', 'Roaming', 'Microso
 const prompt = require('electron-prompt');
 const Store = require('electron-store');
 const { DisableMinimize } = require('electron-disable-minimize');
+const { exec } = require('child_process');
 const store = new Store();
 let tray = undefined;
 let form = undefined;
 var win = undefined;
 let template = []
 let basePath = app.isPackaged ? './resources/app/' : './'
-if (!app.requestSingleInstanceLock({ key: 'classSchedule' })) {
+
+if (!app.requestSingleInstanceLock({ key: '电子课表' })) {
     app.quit();
 }
+
+console.log('Program started')
+
 const createWindow = () => {
     win = new BrowserWindow({
         x: 0,
@@ -36,10 +41,14 @@ const createWindow = () => {
             enableRemoteModule: true
         },
     })
-    // win.webContents.openDevTools()
-    win.loadFile('index.html')
-    if (store.get('isWindowAlwaysOnTop', true))
-        win.setAlwaysOnTop(true, 'screen-saver', 9999999999999)
+    //    win.webContents.openDevTools()
+    win.loadFile('index.html').catch(err => {
+        console.error('Failed to load index.html:', err);
+    });
+    if (store.get('isWindowAlwaysOnTop', true)) {
+        win.setAlwaysOnTop(true, 'screen-saver');
+    }
+
 }
 function setAutoLaunch() {
     const shortcutName = '电子课表(请勿重命名).lnk'
@@ -58,6 +67,45 @@ function setAutoLaunch() {
     }
 
 }
+
+function scheduleShutdown(shutdownTime = "22:30") {
+    const [hour, minute] = shutdownTime.split(':'); // 分割小时和分钟
+
+    const now = new Date(); // 获取当前时间
+    const shutdownDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0); // 创建关机时间的日期对象
+
+    // 如果设定的时间已经过去，设定关机时间为第二天
+    if (shutdownDate <= now) {
+        shutdownDate.setDate(shutdownDate.getDate() + 1);
+    }
+
+    const delay = shutdownDate - now; // 计算延迟的毫秒数
+
+    console.log(`Will close at: ${shutdownDate}`);
+    console.log(`time to shut down: ${Math.ceil(delay / 1000)} s`);
+
+    dialog.showMessageBox(win, {
+        title: '关机提示!',
+        message: `此电脑将关闭于: ${shutdownDate}` + '\n' + `剩余时间: ${Math.ceil(delay / 1000)} s`
+    })
+
+    // 设置定时器
+    setTimeout(() => {
+        exec('shutdown /s /t 0', (error, stdout, stderr) => {
+            if (error) {
+                console.error(`err: ${error.message}`);
+                return;
+            }
+            if (stderr) {
+                console.error(`stderr: ${stderr}`);
+                return;
+            }
+            console.log(`stdout: ${stdout}`);
+        });
+    }, delay);
+}
+
+
 app.whenReady().then(() => {
     createWindow()
     Menu.setApplicationMenu(null)
@@ -125,13 +173,6 @@ ipcMain.on('getWeekIndex', (e, arg) => {
             }
         },
         {
-            icon: basePath + 'image/github.png',
-            label: '源码仓库',
-            click: () => {
-                shell.openExternal('https://github.com/EnderWolf006/ElectronClassSchedule');
-            }
-        },
-        {
             type: 'separator'
         },
         {
@@ -174,9 +215,47 @@ ipcMain.on('getWeekIndex', (e, arg) => {
                 setAutoLaunch()
             }
         },
+
+        {
+            label: '定时关机',
+            type: 'checkbox',
+            checked: store.get('scheduleShutdown', true),
+            click: (e) => {
+                // 使用 e.checked 来设置存储状态
+                store.set('scheduleShutdown', e.checked);
+        
+                // 如果用户选择定时关机，则调用 scheduleShutdown
+                if (e.checked) {
+                    scheduleShutdown();
+                }
+            }
+        },
+        
         {
             type: 'separator'
         },
+        {
+            icon: basePath + 'image/debug.png',
+            label: 'Devtool',
+            click: (e) => {
+                if (win.webContents.isDevToolsOpened()) {
+                    win.webContents.closeDevTools();
+                } else {
+                    win.webContents.openDevTools();
+                }
+            }
+        },
+        {
+            icon: basePath + 'image/info.png',
+            label: '更多信息',
+            click: () => {
+                dialog.showMessageBox(win, {
+                    title: 'Info - Let us across hell and reach to heaven！',
+                    message: '此版本构建于2024/10/19' + '\n' + '\n' + '作者: EnderWolf  二次开发: Enigfrank',
+                })
+            }
+        },
+        
         {
             icon: basePath + 'image/quit.png',
             label: '退出程序',
@@ -193,7 +272,7 @@ ipcMain.on('getWeekIndex', (e, arg) => {
     ]
     template[arg].checked = true
     form = Menu.buildFromTemplate(template)
-    tray.setToolTip('电子课表 - by lsl')
+    tray.setToolTip('电子课表')
     function trayClicked() {
         tray.popUpContextMenu(form)
     }
@@ -208,13 +287,13 @@ ipcMain.on('log', (e, arg) => {
     console.log(arg);
 })
 
+
 ipcMain.on('setIgnore', (e, arg) => {
     if (arg)
         win.setIgnoreMouseEvents(true, { forward: true });
     else
         win.setIgnoreMouseEvents(false);
-})
-
+}) 
 ipcMain.on('dialog', (e, arg) => {
     dialog.showMessageBox(win, arg.options).then((data) => {
         e.reply(arg.reply, { 'arg': arg, 'index': data.response })

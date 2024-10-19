@@ -14,24 +14,28 @@
 
 <body>
   <div class="globalContainer" id="globalContainer">
-    <div class="classContainer background" id="classContainer">
+    <div class="classContainer background" id="classContainer" style="position: relative;"> <!-- 添加 position: relative -->
       <div class="class">加</div>
       <div class="class">载</div>
       <div class="class">中</div>
     </div>
-    <div class="countdownContainer" id="countdownContainer">
-      <div class="triangle"></div>
+    
+    <!-- 修改 countdownContainer 的位置 -->
+    <div class="countdownContainer" id="countdownContainer" style="display: block; position: absolute; left: 100%; top: 0;">
       <div class="countdowner" id="countdowner">
         <div class="currentClass" id="currentFullName">Loading</div>
         <div class="countdown" id="countdownText">00:00</div>
       </div>
     </div>
+    
     <div class="leftSidebar sidebar background" id="leftSidebar"><span id="weekEN" class="t">Load</span><div class="corner options notIgnoreClick" id="weekCH">ing</div></div>
     <div class="rightSidebar sidebar background" id="rightSidebar"><span id="countdownDays" class="t">000</span><div class="corner">天</div></div>
   </div>
   <div class="miniCountdown" id="miniCountdown">00:00</div>
 
 </body>
+
+
 <script>
   const { ipcRenderer } = require('electron');
   let scheduleData = getScheduleData();
@@ -62,6 +66,8 @@
     timetable: null,
     divider: [null, null]
   }
+
+
 
   function setScheduleClass() {
     let classHtml = '';
@@ -120,7 +126,7 @@
     }
   }
 
-  function setCountdownerPosition() {
+   function setCountdownerPosition() {
     let highlightElement = document.getElementById('highlighted')
     let offset = {}
     if (scheduleData.currentHighlight.type === 'current') {
@@ -147,8 +153,6 @@
         y: classContainer.offsetHeight
       }
     }
-    countdownContainer.style.left = offset.x + 'px'
-    countdownContainer.style.top = offset.y + 'px'
   }
 
   function setSidebar() {
@@ -197,11 +201,11 @@
   let timer = undefined
   window.addEventListener("mousemove", event => {
     if (event.target.className && event.target.className.indexOf('notIgnoreClick') == -1) {
-      root.style.opacity = '0.2'
+      root.style.opacity = '0'
       clearTimeout(timer)
       timer = setTimeout(() => {
         root.style.opacity = '1'
-      }, 5000);
+      }, 7500);
     } else {
       clearTimeout(timer)
       root.style.opacity = '1'
@@ -219,7 +223,7 @@
     ipcRenderer.send('dialog', {
       reply: 'getSelectedClassIndex',
       options: {
-        title: '更改课表',
+        title: '临时更改课表',
         message: `请选择你要更改的课程序号`,
         buttons: scheduleData.scheduleArray.map((value, index) => { return `第 ${index + 1} 节: ${scheduleConfig.subject_name[value]}` }),
         cancelId: -1,

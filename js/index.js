@@ -15,6 +15,7 @@ if (setDayOffsetLastDay === null) localStorage.setItem('setDayOffsetLastDay', '-
 setDayOffsetLastDay = Number(localStorage.getItem('setDayOffsetLastDay'))
 
 
+
 function getCurrentEditedDate() {
     let d = new Date();
     d.setSeconds(d.getSeconds() + timeOffset)
@@ -176,4 +177,6 @@ function formatCountdown(countdownSeconds) {
     const seconds = countdownSeconds % 60;
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
+
+
 

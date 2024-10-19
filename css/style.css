@@ -50,6 +50,13 @@
     width: auto;
 }
 
+
+.countdownContainer {
+    position: absolute;
+    transition: all 2s;
+    padding: var(--container-bg-padding);
+}
+
 .globalContainer {
     position: fixed;
     top: var(--top-space);
@@ -113,10 +120,6 @@
     font-family: Sou;
 }
 
-.countdownContainer {
-    position: absolute;
-    transition: all 2s;
-}
 
 .triangle {
     width: 0;
