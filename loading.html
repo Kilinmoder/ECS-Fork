@@ -1,41 +1,27 @@
-<!-- loading.html -->
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>程序加载中...</title>
-    <style>
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
-        }
-        .loading {
-            text-align: center;
-        }
-        .spinner {
-            border: 8px solid #f3f3f3;
-            border-radius: 50%;
-            border-top: 8px solid #3498db;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
-</head>
-<body>
-    <div class="loading">
-        <div class="spinner"></div>
-        <p>程序正在载入...</p>
-    </div>
-</body>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>ASCII models</title>
+    </head>
+
+    <body class="bg" style="
+        margin: 0; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center;
+        width: 100vw;
+        height: 100vh;
+        color: #dadada; 
+        background-color: #000000;">
+        <div class="model" style="
+            font-family: monospace;
+            white-space: pre;
+            font-size: 10px;">
+        </div>
+    </body>
+    <script src="./js/earth.js"></script>
+    <script src="./js/skeleton.js"></script>
+    <script src="./js/heart.js"></script>
+    <script src="./js/models.js"></script>
 </html>

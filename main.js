@@ -8,12 +8,14 @@ const prompt = require('electron-prompt');
 const Store = require('electron-store');
 const { DisableMinimize } = require('electron-disable-minimize');
 const { exec } = require('child_process');
+const shutdownTimers = [];
 const store = new Store();
 let tray = undefined;
 let form = undefined;
 var win = undefined;
 let template = []
 let loadingDialog;
+let shutdownTimer;
 let basePath = app.isPackaged ? './resources/app/' : './'
 
 
@@ -72,45 +74,79 @@ function setAutoLaunch() {
 
 }
 
-function scheduleShutdown(shutdownTime = "21:30") {
-    const [hour, minute] = shutdownTime.split(':'); // 分割小时和分钟
+function scheduleShutdown(shutdownTimes = ["12:11", "21:30"]) {
+    const now = new Date();
 
-    const now = new Date(); // 获取当前时间
-    const shutdownDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0); // 创建关机时间的日期对象
+    shutdownTimes.forEach((shutdownTime) => {
+        const [hour, minute] = shutdownTime.split(':');
+        const shutdownDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0);
 
-    // 如果设定的时间已经过去，设定关机时间为第二天
-    if (shutdownDate <= now) {
-        shutdownDate.setDate(shutdownDate.getDate() + 1);
-    }
+        // 如果关机时间已过，设置为第二天的时间
+        if (shutdownDate <= now) {
+            shutdownDate.setDate(shutdownDate.getDate() + 1);
+        }
 
-    const delay = shutdownDate - now; // 计算延迟的毫秒数
+        const delay = shutdownDate - now;
 
-    // 设置定时器
-    setTimeout(() => {
-        exec('shutdown /s /t 0', (error, stdout, stderr) => {
-            if (error) {
-                console.error(`err: ${error.message}`);
-                dialog.showMessageBox(win, { title: 'Error!', message: `错误!: ${error.message}` })
-                return;
-            }
-            if (stderr) {
-                console.error(`stderr: ${stderr}`);
-                dialog.showMessageBox(win, { title: 'Error!', message: `stderr: ${stderr}` })
+        // 创建定时器并存储 ID
+        const timerId = setTimeout(() => {
+            exec('shutdown /s /t 0', (error, stdout, stderr) => {
+                if (error) {
+                    console.error(`Error: ${error.message}`);
+                    dialog.showMessageBox({ title: 'Error!', message: `错误!: ${error.message}` });
+                    return;
+                }
+                if (stderr) {
+                    console.error(`stderr: ${stderr}`);
+                    dialog.showMessageBox({ title: 'Error!', message: `stderr: ${stderr}` });
+                    return;
+                }
+                console.log(`Shutdown at: ${shutdownDate}`);
+            });
+        }, delay);
 
-                return;
-            }
-            console.log(`stdout: ${stdout}`);
+        // 将定时器 ID 添加到数组中
+        shutdownTimers.push(timerId);
+
+        // 显示消息
+        console.log(`Will close at: ${shutdownDate}`);
+        console.log(`Time to shut down: ${Math.ceil(delay / 1000)} s`);
+        
+        dialog.showMessageBox({
+            title: '关机提示!',
+            message: `此电脑将关闭于: ${shutdownDate}` + '\n' + `剩余时间: ${Math.ceil(delay / 1000)} s`
         });
-    }, delay);
-
-    console.log(`Will close at: ${shutdownDate}`);
-    console.log(`time to shut down: ${Math.ceil(delay / 1000)} s`);
-
-    dialog.showMessageBox(win, {
-        title: '关机提示!',
-        message: `此电脑将关闭于: ${shutdownDate}` + '\n' + `剩余时间: ${Math.ceil(delay / 1000)} s`
-    })
+    });
 }
+
+// 定义取消定时关机的函数
+function clearScheduledShutdown() {
+        shutdownTimers.forEach(timerId => clearTimeout(timerId));
+        shutdownTimers.length = 0; // 清空数组
+        console.log('Scheduled shutdown canceled');
+        dialog.showMessageBox({
+            title: '关机取消',
+            message: '已取消定时关机'
+        });
+    
+}
+
+// 等待 app ready 后初始化定时关机
+app.on('ready', () => {
+    initializeShutdownSchedule();
+    // 其他初始化代码...
+});
+
+function initializeShutdownSchedule() {
+    const isScheduled = store.get('scheduleShutdown', false);
+
+    // 检查是否需要在启动时调用 scheduleShutdown
+    if (isScheduled) {
+        scheduleShutdown();
+    }
+}
+
+
 
 async function firstopen() {
     return await dialog.showMessageBox({
@@ -123,8 +159,8 @@ async function firstopen() {
 
 function showLoadingDialog() {
     loadingDialog = new BrowserWindow({
-        width: 300,
-        height: 200,
+        width: 600,
+        height: 400,
         frame: false, // 无边框窗口
         alwaysOnTop: true, // 窗口置顶
         modal: true, // 模态窗口
@@ -136,7 +172,7 @@ function showLoadingDialog() {
     });
 
     // 加载自定义的加载界面，可以放一个简单的 HTML 文件
-    loadingDialog.loadFile('loading.html');
+    loadingDialog.loadFile('loading1.html');
 }
 
 app.whenReady().then(async () => {
@@ -165,7 +201,7 @@ app.whenReady().then(async () => {
         // 如果不是第一次启动，显示加载框
         showLoadingDialog();
 
-        const randomTime = Math.random() * (1500 - 1000) + 500;
+        const randomTime = Math.random() * (3000 - 1000) + 500;
 
         // 模拟加载时间，2秒后关闭加载框，再创建主窗口
         setTimeout(() => {
@@ -276,17 +312,18 @@ ipcMain.on('getWeekIndex', (e, arg) => {
         {
             label: '定时关机',
             type: 'checkbox',
-            checked: store.get('scheduleShutdown', true),
+            checked: store.get('scheduleShutdown', false), // 根据存储的值初始化 Checkbox 状态
             click: (e) => {
-                // 使用 e.checked 来设置存储状态
-                store.set('scheduleShutdown', e.checked);
-
-                // 如果用户选择定时关机，则调用 scheduleShutdown
+                store.set('scheduleShutdown', e.checked); // 更新状态
+        
                 if (e.checked) {
-                    scheduleShutdown();
+                    scheduleShutdown(); // 如果勾选则启动定时关机
+                } else {
+                    clearScheduledShutdown(); // 如果取消勾选则清除定时关机
                 }
             }
         },
+        
 
         {
             type: 'separator'
@@ -359,13 +396,17 @@ ipcMain.on('log', (e, arg) => {
     console.log(arg);
 })
 
-
+//注释这段代码使可交互↓↓↓
 ipcMain.on('setIgnore', (e, arg) => {
     if (arg)
         win.setIgnoreMouseEvents(true, { forward: true });
     else
         win.setIgnoreMouseEvents(false);
 })
+//注释这段代码使可交互↑↑↑
+
+
+
 ipcMain.on('dialog', (e, arg) => {
     dialog.showMessageBox(win, arg.options).then((data) => {
         e.reply(arg.reply, { 'arg': arg, 'index': data.response })
