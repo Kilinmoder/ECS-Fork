@@ -171,7 +171,7 @@ function showTestGUIWindow() {
         testGUIWindow.show();
     } else {
         testGUIWindow = new BrowserWindow({
-            width: 1280,
+            width: 600,
             height: 800, // 增加高度以容纳更多内容
             title: '课表管理',
             webPreferences: {
@@ -238,7 +238,6 @@ function getTrayMenuTemplate() {
 // 托盘点击事件处理
 function trayClicked() {
     // 托盘点击事件处理逻辑（根据需求定义）
-    showTestGUIWindow();
 }
 
 app.whenReady().then(async () => {

@@ -1,13 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>测试GUI</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>课表配置界面</title>
+    <link rel="stylesheet" type="text/css" href="./css/bootstrap.css">
+    <link rel="stylesheet" type="text/css" href="./css/custom.css">
     <style>
-        body {
-            background-color: #f8f9fa;
-            font-family: Arial, sans-serif;
-        }
         .container {
             margin-top: 50px;
         }
@@ -23,56 +20,78 @@
             text-align: center;
             margin-bottom: 30px;
         }
+        .footer-text {
+            text-align: center;
+            font-weight: bold;
+        }
+        body {
+            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
+            padding: 0;
+        }
     </style>
 </head>
 <body>
+
 <div class="container">
-    <h1>测试GUI</h1>
-    <div class="card p-3">
-        <h5>功能选项</h5>
-        <div class="d-flex flex-wrap justify-content-center">
-            <button id="week1" class="btn btn-primary">第一周</button>
-            <button id="week2" class="btn btn-primary">第二周</button>
-            <button id="openSetting" class="btn btn-secondary">配置课表</button>
-            <button id="correctTime" class="btn btn-secondary">矫正计时</button>
-            <button id="toggleSchedule" class="btn btn-secondary">切换日程</button>
+    <h1 class="text-center mb-5">Console</h1>
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">功能选项</h5>
+            <div class="d-flex flex-wrap justify-content-center">
+                <button id="week1" class="btn btn-primary mr-2 mb-2">第一周</button>
+                <button id="week2" class="btn btn-primary mr-2 mb-2">第二周</button>
+                <button id="openSetting" class="btn btn-secondary mr-2 mb-2">配置课表</button>
+                <button id="correctTime" class="btn btn-secondary mr-2 mb-2">矫正计时</button>
+                <button id="toggleSchedule" class="btn btn-secondary mr-2 mb-2">切换日程</button>
+            </div>
         </div>
     </div>
-    <div class="card p-3">
-        <h5>设置选项</h5>
-        <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="classCountdown">
-            <label class="form-check-label" for="classCountdown">课上计时</label>
-        </div>
-        <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="windowAlwaysOnTop">
-            <label class="form-check-label" for="windowAlwaysOnTop">窗口置顶</label>
-        </div>
-        <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="classHidden">
-            <label class="form-check-label" for="classHidden">上课隐藏</label>
-        </div>
-        <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="autoLaunch">
-            <label class="form-check-label" for="autoLaunch">开机启动</label>
-        </div>
-        <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="scheduleShutdown">
-            <label class="form-check-label" for="scheduleShutdown">定时关机</label>
-        </div>
-    </div>
-    <div class="card p-3">
-        <h5>其他工具</h5>
-        <div class="d-flex flex-wrap justify-content-center">
-            <button id="devTools" class="btn btn-warning">开发者工具</button>
-            <button id="resetSettings" class="btn btn-danger">重置设置</button>
-            <button id="moreInfo" class="btn btn-info">更多信息</button>
-            <button id="quitApp" class="btn btn-dark">退出程序</button>
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">设置选项</h5>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="classCountdown">
+                <label class="form-check-label" for="classCountdown">课上计时</label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="windowAlwaysOnTop">
+                <label class="form-check-label" for="windowAlwaysOnTop">窗口置顶</label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="classHidden">
+                <label class="form-check-label" for="classHidden">上课隐藏</label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="autoLaunch">
+                <label class="form-check-label" for="autoLaunch">开机启动</label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="scheduleShutdown">
+                <label class="form-check-label" for="scheduleShutdown">定时关机</label>
+            </div>
         </div>
     </div>
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">其他工具</h5>
+            <div class="d-flex flex-wrap justify-content-center">
+                <button id="devTools" class="btn btn-warning mr-2 mb-2">开发者工具</button>
+                <button id="resetSettings" class="btn btn-danger mr-2 mb-2">重置设置</button>
+                <button id="moreInfo" class="btn btn-info mr-2 mb-2">更多信息</button>
+                <button id="quitApp" class="btn btn-dark mr-2 mb-2">退出程序</button>
+            </div>
+        </div>
+    </div>
+    <footer class="text-center">
+        <p class="footer-text">&copy; <span id="year"></span> Enigfrank 版权所有</p>
+    </footer>
 </div>
 
 <script>
+
+    document.getElementById("year").innerHTML = new Date().getFullYear();
+
     const { ipcRenderer } = require('electron');
 
     ipcRenderer.on('init', (event, data) => {
@@ -132,6 +151,8 @@
     document.getElementById('quitApp').addEventListener('click', () => {
         ipcRenderer.send('quitApp');
     });
+
+
 </script>
 </body>
 </html>
